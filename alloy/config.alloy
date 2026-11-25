@@ -30,6 +30,13 @@ loki.process "nginx" {
     }
   }
 
+  // Older lines still contain public%3Aroads. Store the decoded name.
+  stage.replace {
+    source     = "layer"
+    expression = "(?i)%3A"
+    replace    = ":"
+  }
+
   stage.labels {
     values = {
       status  = "",

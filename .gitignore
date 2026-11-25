@@ -1,0 +1,85 @@
+# Secrets and local environment. .env.example is the only env file that belongs in git.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.crt
+*.cer
+*.csr
+*.srl
+*.p12
+*.pfx
+*.jks
+*.keystore
+id_rsa
+id_rsa.*
+id_ed25519
+id_ed25519.*
+*.kubeconfig
+secrets/
+*.secret
+
+# Let's Encrypt state, local certificate output, and anything Certbot writes.
+letsencrypt/
+certbot/
+acme.json
+certs/*
+!certs/.gitkeep
+
+# GIS payloads. The repository ships scripts that build these; it does not ship the data.
+data/**
+!data/README.md
+!data/.gitkeep
+*.tif
+*.tiff
+*.gtiff
+*.gpkg
+*.gpkg-*
+*.img
+*.ecw
+*.sid
+*.vrt
+*.shp
+*.shx
+*.dbf
+*.prj
+*.cpg
+*.qix
+*.qpj
+*.zip
+*.las
+*.laz
+*.sqlite
+*.mbtiles
+
+# Database volumes, tile caches, and other runtime disks.
+volumes/
+pgdata/
+postgres-data/
+geoserver_data/
+grafana-storage/
+prometheus-data/
+loki-data/
+gwc-cache/
+
+# Logs and test output.
+logs/
+*.log
+*.log.*
+locust/*.csv
+locust/*.html
+smoke-test-output.txt
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# OS and editor clutter
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp

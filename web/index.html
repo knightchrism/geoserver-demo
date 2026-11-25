@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GeoKnight GIS</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="mast">
+    <p class="eyebrow">Christopher Knight · Jacksonville</p>
+    <h1>GeoKnight GIS</h1>
+    <p class="lede">A secure map server for Duval County. Public visitors can see roads, aerial imagery, and elevation. Parcel and installation layers stay behind a sign-in.</p>
+  </header>
+
+  <main>
+    <section class="gallery" aria-label="Public map layers">
+      <figure>
+        <img
+          alt="Gold road lines on a navy field for the downtown Jacksonville sample"
+          src="/geoserver/public/wms?service=WMS&amp;version=1.1.1&amp;request=GetMap&amp;layers=public:roads&amp;styles=&amp;srs=EPSG:26917&amp;bbox=429240,3341670,438990,3358380&amp;width=640&amp;height=480&amp;format=image/png&amp;transparent=true">
+        <figcaption>
+          <strong>Roads</strong>
+          <span>Public. Anyone can view this layer.</span>
+        </figcaption>
+      </figure>
+      <figure>
+        <img
+          alt="Sample aerial image of the demonstration window"
+          src="/geoserver/public/wms?service=WMS&amp;version=1.1.1&amp;request=GetMap&amp;layers=public:naip&amp;styles=&amp;srs=EPSG:26917&amp;bbox=429240,3341670,438990,3358380&amp;width=640&amp;height=480&amp;format=image/png">
+        <figcaption>
+          <strong>Aerial imagery</strong>
+          <span>NAIP-style sample, served from a Cloud Optimized GeoTIFF.</span>
+        </figcaption>
+      </figure>
+      <figure>
+        <img
+          alt="Elevation color ramp from near sea level to higher ground"
+          src="/geoserver/public/wms?service=WMS&amp;version=1.1.1&amp;request=GetMap&amp;layers=public:dem&amp;styles=&amp;srs=EPSG:26917&amp;bbox=429240,3341670,438990,3358380&amp;width=640&amp;height=480&amp;format=image/png">
+        <figcaption>
+          <strong>Elevation</strong>
+          <span>3DEP-style grid with a coastal color ramp. A hillshade is published beside it.</span>
+        </figcaption>
+      </figure>
+    </section>
+
+    <section class="split">
+      <div>
+        <h2>Open the live preview</h2>
+        <p>GeoServer draws an interactive map from the same service. This link is the layer preview for the public roads.</p>
+        <p><a class="button" href="/geoserver/public/wms?service=WMS&amp;version=1.1.1&amp;request=GetMap&amp;layers=public:roads&amp;styles=&amp;srs=EPSG:26917&amp;bbox=429240,3341670,438990,3358380&amp;width=900&amp;height=700&amp;format=application/openlayers">Open the roads preview</a></p>
+      </div>
+      <div>
+        <h2>Who can see what</h2>
+        <ul class="roles">
+          <li><span>Public visitor</span> Roads, imagery, elevation, and hillshade. No password.</li>
+          <li><span>Viewer</span> The same public layers, after signing in.</li>
+          <li><span>Analyst</span> Also parcels and installation points.</li>
+          <li><span>Editor</span> Can add and remove editor notes.</li>
+        </ul>
+        <p class="note">Parcel and installation maps are not on this page. Asking for them without the right sign-in is refused.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p>GeoKnight GIS · demonstration server · not a county system of record</p>
+  </footer>
+</body>
+</html>

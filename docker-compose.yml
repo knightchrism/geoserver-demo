@@ -1,0 +1,300 @@
+name: geoknight
+
+# One compose file for a Windows laptop (Docker Desktop + WSL2, repo under C:\dev)
+# and for an Ubuntu 24.04 VM. TLS files differ. The services do not.
+
+networks:
+  frontend:
+    ipam:
+      config:
+        - subnet: 172.28.10.0/24
+          gateway: 172.28.10.1
+  backend:
+    ipam:
+      config:
+        - subnet: 172.28.11.0/24
+          gateway: 172.28.11.1
+  edge:
+    ipam:
+      config:
+        - subnet: 172.28.12.0/24
+          gateway: 172.28.12.1
+
+volumes:
+  postgis_data:
+  geoserver_data:
+  prometheus_data:
+  grafana_data:
+  loki_data:
+  certbot_www:
+  certbot_certs:
+
+services:
+  postgis:
+    image: postgis/postgis:16-3.5
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    command:
+      - postgres
+      - -c
+      - shared_buffers=128MB
+      - -c
+      - max_connections=40
+    volumes:
+      - postgis_data:/var/lib/postgresql/data
+      - ./sql/001_schema.sql:/docker-entrypoint-initdb.d/001_schema.sql:ro
+    ports:
+      - "${POSTGIS_BIND:-127.0.0.1}:${POSTGIS_PORT:-5432}:5432"
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    mem_limit: 512m
+
+  geoserver:
+    image: docker.osgeo.org/geoserver:3.0.2
+    restart: unless-stopped
+    depends_on:
+      postgis:
+        condition: service_healthy
+    environment:
+      GEOSERVER_ADMIN_USER: ${GEOSERVER_ADMIN_USER}
+      GEOSERVER_ADMIN_PASSWORD: ${GEOSERVER_ADMIN_PASSWORD}
+      SKIP_DEMO_DATA: "true"
+      INSTALL_EXTENSIONS: "false"
+      JSONP_ENABLED: "false"
+      CORS_ENABLED: "true"
+      CORS_ALLOWED_ORIGINS: "https://${PUBLIC_HOST:-localhost},https://localhost,https://127.0.0.1,https://geoknight.local"
+      CORS_ALLOWED_METHODS: "GET,POST,PUT,DELETE,HEAD,OPTIONS"
+      CORS_ALLOWED_HEADERS: "Origin,Accept,X-Requested-With,Content-Type,Access-Control-Request-Method,Access-Control-Request-Headers,Authorization"
+      PROXY_BASE_URL: "https://${PUBLIC_HOST:-localhost}/geoserver"
+      GEOSERVER_TRUSTED_PROXIES: "172.28.10.0/24,172.28.11.0/24,172.28.12.0/24"
+      EXTRA_JAVA_OPTS: "-Xms256m -Xmx768m"
+      JAVA_TOOL_OPTIONS: "-XX:-UseBASE64Intrinsics"
+      ROOT_WEBAPP_REDIRECT: "true"
+    volumes:
+      - geoserver_data:/opt/geoserver_data
+      - ./data:/opt/data:ro
+      - ./geoserver/update_credentials.sh:/opt/update_credentials.sh:ro
+    ports:
+      - "${GEOSERVER_BIND:-127.0.0.1}:${GEOSERVER_PORT:-8080}:8080"
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://127.0.0.1:8080/geoserver/web/"]
+      interval: 15s
+      timeout: 10s
+      retries: 24
+      start_period: 40s
+    mem_limit: 1600m
+
+  nginx:
+    image: nginx:1.27.5-alpine
+    restart: unless-stopped
+    depends_on:
+      - geoserver
+      - grafana
+    environment:
+      NGINX_ENVSUBST_FILTER: "^ADMIN_"
+      ADMIN_ALLOW_CIDRS: ${ADMIN_ALLOW_CIDRS:-10.0.0.0/8,192.168.0.0/16,172.16.0.0/12}
+    entrypoint: ["/bin/sh", "/docker-entrypoint-geoknight.sh"]
+    command: ["nginx", "-g", "daemon off;"]
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/templates/default.conf.template:/etc/nginx/templates/default.conf.template:ro
+      - ./nginx/snippets:/etc/nginx/snippets:ro
+      - ./nginx/docker-entrypoint-geoknight.sh:/docker-entrypoint-geoknight.sh:ro
+      - ./certs:/etc/nginx/certs:ro
+      - ./web:/usr/share/nginx/html:ro
+      - ./logs/nginx:/var/log/nginx
+      - certbot_www:/var/www/certbot
+    ports:
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+    networks:
+      - frontend
+      - backend
+      - edge
+    mem_limit: 128m
+
+  prometheus:
+    image: prom/prometheus:v3.2.1
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=2d
+      - --web.enable-lifecycle
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    networks:
+      - backend
+      - frontend
+    mem_limit: 256m
+
+  grafana:
+    image: grafana/grafana:11.6.0
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+      - loki
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_USERS_DEFAULT_THEME: dark
+      GF_SERVER_ROOT_URL: "https://${PUBLIC_HOST:-localhost}/grafana/"
+      GF_SERVER_SERVE_FROM_SUB_PATH: "true"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/geoknight.json
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+    networks:
+      - backend
+    mem_limit: 320m
+
+  loki:
+    image: grafana/loki:3.4.2
+    restart: unless-stopped
+    command: ["-config.file=/etc/loki/loki-config.yml"]
+    volumes:
+      - ./loki/loki-config.yml:/etc/loki/loki-config.yml:ro
+      - loki_data:/loki
+    networks:
+      - backend
+    mem_limit: 320m
+
+  alloy:
+    image: grafana/alloy:v1.8.3
+    restart: unless-stopped
+    user: "0:0"
+    depends_on:
+      - loki
+    command:
+      - run
+      - --server.http.listen-addr=0.0.0.0:12345
+      - --storage.path=/var/lib/alloy/data
+      - /etc/alloy/config.alloy
+    volumes:
+      - ./alloy/config.alloy:/etc/alloy/config.alloy:ro
+      - ./logs/nginx:/var/log/nginx:ro
+    networks:
+      - backend
+    mem_limit: 160m
+
+  node-exporter:
+    image: prom/node-exporter:v1.9.0
+    restart: unless-stopped
+    pid: host
+    command:
+      - --path.rootfs=/host
+      - --path.procfs=/host/proc
+      - --path.sysfs=/host/sys
+      - --collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/host:ro
+    networks:
+      - backend
+    mem_limit: 64m
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.51.0
+    restart: unless-stopped
+    privileged: true
+    command:
+      - --housekeeping_interval=30s
+      - --docker_only=true
+      - --store_container_labels=true
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker:/var/lib/docker:ro
+      - /dev/disk:/dev/disk:ro
+    networks:
+      - backend
+    mem_limit: 160m
+
+  locust:
+    image: locustio/locust:2.37.0
+    profiles: ["sim"]
+    depends_on:
+      - nginx
+    volumes:
+      - ./locust:/mnt/locust:ro
+      - ./config:/config:ro
+      - ./data:/data:ro
+      - ./certs/ca.crt:/certs/ca.crt:ro
+    environment:
+      ANALYST_USER: ${ANALYST_USER}
+      ANALYST_PASSWORD: ${ANALYST_PASSWORD}
+      EDITOR_USER: ${EDITOR_USER}
+      EDITOR_PASSWORD: ${EDITOR_PASSWORD}
+      VIEWER_USER: ${VIEWER_USER}
+      VIEWER_PASSWORD: ${VIEWER_PASSWORD}
+      REQUESTS_CA_BUNDLE: /certs/ca.crt
+    entrypoint: ["locust"]
+    command:
+      - -f
+      - /mnt/locust/locustfile.py
+      - --headless
+      - -u
+      - ${SIM_USERS:-16}
+      - -r
+      - ${SIM_SPAWN_RATE:-4}
+      - -t
+      - ${SIM_DURATION:-2m}
+      - --host
+      - https://nginx
+      - --only-summary
+    networks:
+      frontend:
+        ipv4_address: 172.28.10.50
+    mem_limit: 256m
+
+  outsider:
+    image: curlimages/curl:8.12.1
+    profiles: ["test"]
+    volumes:
+      - ./certs/ca.crt:/certs/ca.crt:ro
+    entrypoint: ["curl"]
+    networks:
+      - edge
+
+  certbot:
+    image: certbot/certbot:v3.3.0
+    profiles: ["letsencrypt"]
+    volumes:
+      - certbot_www:/var/www/certbot
+      - certbot_certs:/etc/letsencrypt
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - "trap exit TERM; while :; do certbot renew --webroot -w /var/www/certbot --quiet; sleep 12h & wait $$!; done"
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.2.5
+    profiles: ["oidc"]
+    command: ["start-dev", "--http-port=8080"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN:-kcadmin}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      KC_HTTP_ENABLED: "true"
+      KC_HOSTNAME_STRICT: "false"
+    ports:
+      - "127.0.0.1:8081:8080"
+    networks:
+      - backend
+    mem_limit: 768m

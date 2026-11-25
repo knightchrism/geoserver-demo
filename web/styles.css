@@ -1,0 +1,120 @@
+:root {
+  --navy: #0b1f3a;
+  --gold: #c9a227;
+  --sand: #f4efe2;
+  --ink: #142033;
+  --line: rgba(201, 162, 39, 0.45);
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--sand);
+  color: var(--ink);
+  font-family: "Segoe UI", Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+}
+
+.mast {
+  background: var(--navy);
+  color: var(--sand);
+  padding: 3.2rem 8vw 2.6rem;
+  border-bottom: 6px solid var(--gold);
+}
+
+.eyebrow {
+  margin: 0 0 0.4rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-size: 0.78rem;
+  color: var(--gold);
+}
+
+h1 {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 500;
+  font-size: clamp(2.4rem, 5vw, 4.2rem);
+  letter-spacing: -0.02em;
+}
+
+.lede { max-width: 40rem; font-size: 1.15rem; }
+
+main { padding: 2rem 8vw 3rem; }
+
+.gallery {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1.2rem;
+}
+
+figure {
+  margin: 0;
+  background: white;
+  border: 1px solid var(--line);
+}
+
+figure img {
+  display: block;
+  width: 100%;
+  height: auto;
+  background: var(--navy);
+}
+
+figcaption { padding: 0.8rem 0.9rem 1rem; }
+
+figcaption strong {
+  display: block;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.15rem;
+}
+
+figcaption span { color: #3d4b5e; }
+
+.split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2.5rem;
+  margin-top: 2.4rem;
+}
+
+h2 {
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 500;
+  color: var(--navy);
+  margin-top: 0;
+}
+
+.button {
+  display: inline-block;
+  background: var(--navy);
+  color: var(--gold);
+  text-decoration: none;
+  padding: 0.75rem 1rem;
+  border-bottom: 3px solid var(--gold);
+}
+
+.button:focus, a:focus { outline: 2px solid var(--gold); outline-offset: 3px; }
+
+.roles { list-style: none; padding: 0; margin: 0; }
+.roles li { padding: 0.55rem 0; border-bottom: 1px solid rgba(11, 31, 58, 0.12); }
+.roles span {
+  display: inline-block;
+  min-width: 8.5rem;
+  color: var(--navy);
+  font-weight: 650;
+}
+
+.note { color: #3d4b5e; }
+
+footer {
+  padding: 1.2rem 8vw 2rem;
+  color: #5c6b7e;
+  font-size: 0.92rem;
+}
+
+@media (max-width: 900px) {
+  .gallery, .split { grid-template-columns: 1fr; }
+  .mast, main, footer { padding-left: 1.2rem; padding-right: 1.2rem; }
+}

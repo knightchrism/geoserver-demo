@@ -14,13 +14,13 @@ GeoServer ships with the login `admin` / `geoserver`. This stack will not start 
 
 There is also a master password. It locks the security configuration itself. It is separate from the admin login, and the setup script changes it away from `geoserver`.
 
-## Four kinds of people
+## Five kinds of people
 
 | Person | What they can do |
 | --- | --- |
 | Public visitor, not signed in | Read roads, tracts, imagery, elevation, and hillshade. |
 | Viewer | The same public layers, after signing in. Not the parcels or installations. |
-| Analyst | Public layers plus parcels and MIRTA points. |
+| Analyst | Public layers plus parcels and MIRTA polygons. |
 | Editor | Everything an analyst can read, plus adding, updating, and deleting editor notes. Writes to every other layer are refused. |
 | Admin | The GeoServer administration pages, from an approved network. |
 

@@ -1,0 +1,118 @@
+{
+  "workspaces": [
+    {
+      "name": "public",
+      "uri": "https://geoknight.gis/public",
+      "title": "Public map layers"
+    },
+    {
+      "name": "restricted",
+      "uri": "https://geoknight.gis/restricted",
+      "title": "Restricted map layers"
+    }
+  ],
+  "vectors": [
+    {
+      "workspace": "public",
+      "store": "postgis",
+      "schema": "public",
+      "table": "roads",
+      "name": "roads",
+      "title": "Roads",
+      "abstract": "Road centerlines for the Jacksonville area of interest. Loaded from vector/sql/roads.sql when that PGDump is present, otherwise from vector/gpkg/roads.gpkg.",
+      "style": "roads",
+      "geometry": "multilinestring",
+      "tiled": true
+    },
+    {
+      "workspace": "public",
+      "store": "postgis",
+      "schema": "public",
+      "table": "tracts",
+      "name": "tracts",
+      "title": "Census tracts",
+      "abstract": "Census tracts covering the Jacksonville area of interest.",
+      "style": "tracts",
+      "geometry": "multipolygon",
+      "tiled": true
+    },
+    {
+      "workspace": "public",
+      "store": "postgis",
+      "schema": "public",
+      "table": "aoi",
+      "name": "aoi",
+      "title": "Area of interest",
+      "abstract": "Demonstration window from aoi_26917.geojson. Downtown Jacksonville through NAS Jacksonville.",
+      "style": "aoi",
+      "geometry": "polygon",
+      "tiled": false
+    },
+    {
+      "workspace": "restricted",
+      "store": "postgis",
+      "schema": "public",
+      "table": "parcels",
+      "name": "parcels",
+      "title": "Duval County parcels",
+      "abstract": "Parcel polygons. The parcel key is RE. Owner names are not included.",
+      "style": "parcels",
+      "geometry": "multipolygon",
+      "tiled": true
+    },
+    {
+      "workspace": "restricted",
+      "store": "postgis",
+      "schema": "public",
+      "table": "mirta_fl",
+      "name": "mirta",
+      "title": "MIRTA installations",
+      "abstract": "Florida installation points. The site name column is SITENAME. The sample points shipped for a machine without the real extract are labeled as samples.",
+      "style": "installations",
+      "geometry": "point",
+      "tiled": true
+    },
+    {
+      "workspace": "restricted",
+      "store": "notes",
+      "schema": "restricted",
+      "table": "editor_notes",
+      "name": "editor_notes",
+      "title": "Editor notes",
+      "abstract": "Points an editor can create and delete with WFS transactions. This table is created empty by the database script. It is not part of the county extract.",
+      "style": "editor_notes",
+      "from": "schema",
+      "geometry": "point",
+      "tiled": false
+    }
+  ],
+  "rasters": [
+    {
+      "workspace": "public",
+      "name": "naip",
+      "title": "NAIP imagery 2025",
+      "abstract": "2025 NAIP imagery for the Jacksonville area of interest, stored as a JPEG-compressed Cloud Optimized GeoTIFF at imagery/naip_2025_jax_aoi_cog.tif.",
+      "style": "naip",
+      "file": "imagery/naip_2025_jax_aoi_cog.tif",
+      "tiled": true
+    },
+    {
+      "workspace": "public",
+      "name": "dem",
+      "title": "3DEP elevation",
+      "abstract": "USGS 3DEP bare-earth elevation in meters at elevation/dem_3dep_aoi_cog.tif. Nodata is -999999. Elevations in this window run from about -3 m to 19 m.",
+      "style": "dem_colorramp",
+      "file": "elevation/dem_3dep_aoi_cog.tif",
+      "tiled": true
+    },
+    {
+      "workspace": "public",
+      "name": "hillshade",
+      "title": "Hillshade",
+      "abstract": "8-bit hillshade derived from the 3DEP grid, at elevation/hillshade_aoi_cog.tif.",
+      "style": "hillshade",
+      "file": "elevation/hillshade_aoi_cog.tif",
+      "tiled": true
+    }
+  ]
+}

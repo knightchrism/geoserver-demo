@@ -1,0 +1,75 @@
+# Site template. The entrypoint fills the allow/deny block before Nginx starts.
+
+server {
+    listen 80;
+    server_name _;
+
+    location ^~ /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+        default_type "text/plain";
+    }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name _;
+
+    include /etc/nginx/snippets/ssl-params.conf;
+    include /etc/nginx/snippets/security-headers.conf;
+
+    location ^~ /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+        default_type "text/plain";
+    }
+
+    location = /geoserver/web {
+        ${ADMIN_ALLOW_DIRECTIVES}
+        include /etc/nginx/snippets/proxy-params.conf;
+        proxy_pass http://geoserver:8080;
+    }
+
+    location /geoserver/web/ {
+        ${ADMIN_ALLOW_DIRECTIVES}
+        include /etc/nginx/snippets/proxy-params.conf;
+        proxy_pass http://geoserver:8080;
+    }
+
+    location /geoserver/j_spring_security_check {
+        ${ADMIN_ALLOW_DIRECTIVES}
+        include /etc/nginx/snippets/proxy-params.conf;
+        proxy_pass http://geoserver:8080;
+    }
+
+    location /geoserver/rest/ {
+        ${ADMIN_ALLOW_DIRECTIVES}
+        include /etc/nginx/snippets/proxy-params.conf;
+        proxy_pass http://geoserver:8080;
+    }
+
+    location /geoserver/gwc/rest/ {
+        ${ADMIN_ALLOW_DIRECTIVES}
+        include /etc/nginx/snippets/proxy-params.conf;
+        proxy_pass http://geoserver:8080;
+    }
+
+    location /geoserver/ {
+        include /etc/nginx/snippets/proxy-params.conf;
+        proxy_pass http://geoserver:8080;
+    }
+
+    location /grafana/ {
+        ${ADMIN_ALLOW_DIRECTIVES}
+        include /etc/nginx/snippets/proxy-params.conf;
+        proxy_pass http://grafana:3000;
+    }
+
+    location / {
+        root /usr/share/nginx/html;
+        index index.html;
+    }
+}

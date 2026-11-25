@@ -49,6 +49,10 @@ ORDER BY column_name;
 SELECT count(*) AS parcel_rows FROM public.fixture_parcels;
 SELECT count(*) AS mirta_rows FROM public.fixture_mirta;
 SELECT sitename FROM public.fixture_mirta ORDER BY id;
+SELECT id, fullname FROM public.fixture_roads ORDER BY id;
+SELECT indexname FROM pg_indexes
+WHERE schemaname = 'public' AND tablename = 'fixture_roads'
+ORDER BY indexname;
 SQL
 
 schema_note="$(dc exec -T postgis psql -q -tA -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
@@ -75,10 +79,31 @@ case "$mirta_cols" in
 esac
 
 counts="$(dc exec -T postgis psql -q -tA -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
-    -c "SELECT (SELECT count(*) FROM public.fixture_parcels) || ',' || (SELECT count(*) FROM public.fixture_mirta)")"
+    -c "SELECT (SELECT count(*) FROM public.fixture_parcels) || ',' || (SELECT count(*) FROM public.fixture_mirta) || ',' || (SELECT count(*) FROM public.fixture_roads)")"
 counts="$(printf '%s' "$counts" | tr -d '[:space:]')"
-if [ "$counts" != "1,2" ]; then
-    die "Second load was not idempotent (counts ${counts}, expected 1,2)."
+if [ "$counts" != "1,2,2" ]; then
+    die "Second load was not idempotent (counts ${counts}, expected 1,2,2)."
 fi
 
-echo "[geoknight] fixture load passed (public schema, lowercase columns, second load kept 1 parcel and 2 sites)"
+obrien="$(dc exec -T postgis psql -q -tA -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
+    -c "SELECT count(*) FROM public.fixture_roads WHERE fullname = 'O''Brien St'")"
+obrien="$(printf '%s' "$obrien" | tr -d '[:space:]')"
+if [ "$obrien" != "1" ]; then
+    die "COPY data lost the apostrophe in O'Brien St (count ${obrien})."
+fi
+
+kept="$(dc exec -T postgis psql -q -tA -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
+    -c "SELECT count(*) FROM public.fixture_roads WHERE fullname = 'keep jax_demo in this name'")"
+kept="$(printf '%s' "$kept" | tr -d '[:space:]')"
+if [ "$kept" != "1" ]; then
+    die "COPY data rewrote the jax_demo value (count ${kept})."
+fi
+
+index_count="$(dc exec -T postgis psql -q -tA -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
+    -c "SELECT count(*) FROM pg_indexes WHERE schemaname = 'public' AND tablename = 'fixture_roads' AND indexname = 'fixture_roads_fullname_idx'")"
+index_count="$(printf '%s' "$index_count" | tr -d '[:space:]')"
+if [ "$index_count" != "1" ]; then
+    die "CREATE INDEX after the COPY block was not created on public.fixture_roads (count ${index_count})."
+fi
+
+echo "[geoknight] fixture load passed (public schema, lowercase columns, O'Brien St, preserved jax_demo text, index after COPY, second load kept 1 parcel, 2 sites, and 2 roads)"

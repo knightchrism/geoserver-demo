@@ -21,12 +21,18 @@ There is also a master password. It locks the security configuration itself. It 
 | Public visitor, not signed in | Read roads, tracts, imagery, elevation, and hillshade. |
 | Viewer | The same public layers, after signing in. Not the parcels or installations. |
 | Analyst | Public layers plus parcels and MIRTA points. |
-| Editor | Everything an analyst can read, plus adding and deleting editor notes with WFS transactions. |
+| Editor | Everything an analyst can read, plus adding, updating, and deleting editor notes. Writes to every other layer are refused. |
 | Admin | The GeoServer administration pages, from an approved network. |
 
 A request for a restricted layer with no sign-in gets **401**. A signed-in person who is not allowed gets **403**. The server is in "challenge" mode, so it does not pretend the layer is missing. That is what produces the failures the dashboard counts.
 
-The parcel table is keyed by `RE`. Owner names are not in the data. The installation name column is `SITENAME`.
+The parcel table is keyed by `re`. Owner names are not in the data. MIRTA features are polygons. The installation name column is `sitename`.
+
+The editor's write rule is `restricted.editor_notes` only. `public` layers and the other `restricted` layers are read-only for that account. WFS transactions are still limited to the editor and the administrator, and the layer rule is what stops an editor from changing parcels or roads.
+
+## GeoServer does not connect as the database owner
+
+PostGIS is loaded by the database owner (`POSTGRES_USER`). GeoServer uses a second login, `GEOSERVER_DB_USER`. That role can read the map tables. It can insert, update, and delete `restricted.editor_notes` and use that table's id sequence. It cannot write the other tables, and it cannot create objects in `public` or `restricted`. `scripts/grant-app-role.sh` applies this, and both `make load-data` and `make configure` run it. A stolen GeoServer password still cannot rewrite the parcel table.
 
 ## The admin website is not for the whole internet
 
@@ -40,7 +46,11 @@ Port 80 only redirects to HTTPS, aside from the Let's Encrypt check path.
 
 The TLS settings allow TLS 1.2 and TLS 1.3 and use modern cipher suites. Responses include HSTS, nosniff, a frame restriction, a referrer policy, and a content security policy. The content security policy still allows inline scripts because GeoServer's own preview page uses them.
 
-On a laptop, `scripts/tls-local.sh` makes a local certificate authority. Trust `certs/ca.crt` if you want the browser warning to go away. On the Ubuntu VM, `scripts/tls-certbot.sh` requests a real certificate and copies it to the same files Nginx already uses, so the Compose file does not change.
+`TLS_MODE` in `.env` is `local` or `letsencrypt`. `make up` writes a self-signed certificate when `certs/server.crt` is missing, and it refreshes a local certificate that does not list `DNS:nginx` when `TLS_MODE=local`. It does not replace a certificate that is already present when `TLS_MODE=letsencrypt`, and it does not replace a Let's Encrypt certificate in either mode.
+
+On a laptop, `scripts/tls-local.sh` makes a local certificate authority. Trust `certs/ca.crt` if you want the browser warning to go away. On the Ubuntu VM, `scripts/tls-certbot.sh` requests a real certificate and copies it to the same files Nginx already uses, so the Compose file does not change. `scripts/tls-renew.sh` runs Certbot again, copies `fullchain.pem` and `privkey.pem` with `scripts/tls-deploy-hook.sh`, and reloads Nginx. `sudo sh scripts/bootstrap-vm.sh --enable-cert-renew` installs a systemd timer for that script. `--with-cron` installs the cron example instead.
+
+`make verify` and `make simulate` trust `certs/ca.crt` when `TLS_MODE=local`. When `TLS_MODE=letsencrypt` they use the system certificate store and the public host name on the certificate. `VERIFY_CA` points either command at a CA file of your choosing.
 
 ## The database is not on the public internet
 

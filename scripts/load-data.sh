@@ -5,15 +5,18 @@
 #   aoi.geojson
 #   aoi_26917.geojson
 #   vector/gpkg/{parcels,roads,mirta_fl,tracts}.gpkg
-#   vector/sql/{parcels,roads,mirta_fl,tracts}.sql   (ogr2ogr PGDump, EPSG:26917, GiST)
+#   vector/sql/{parcels,roads,mirta_fl,tracts}.sql
 #   imagery/naip_2025_jax_aoi_cog.tif
 #   elevation/dem_3dep_aoi_cog.tif
 #   elevation/hillshade_aoi_cog.tif
 #   styles/dem_colorramp.sld
 #   styles/hillshade.sld
 #
-# A SQL dump is loaded when it is present. The GeoPackage is the fallback.
-# Rasters are not copied into the database. GeoServer reads them from this folder.
+# The SQL files are pg_dump-style scripts. They create tables in the jax_demo
+# schema and already use CREATE TABLE IF NOT EXISTS. Column names are lowercase
+# (re, sitename). The loader moves jax_demo to public, does not add a second
+# IF NOT EXISTS, and can be run again. A GeoPackage is loaded with ogr2ogr
+# when the SQL file is missing. Rasters stay on disk for GeoServer.
 set -eu
 # shellcheck disable=SC1091
 . "$(dirname "$0")/lib/common.sh"
@@ -52,11 +55,11 @@ dc exec -T postgis psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"
 
 load_sql() {
     name="$1"
+    rewritten="$(mktemp)"
     echo "[geoknight] loading vector/sql/${name}.sql"
-    # ogr2ogr PGDump writes CREATE SCHEMA, which fails when public already exists.
-    sed 's/^CREATE SCHEMA /CREATE SCHEMA IF NOT EXISTS /' \
-        "$DATA_DIR/vector/sql/${name}.sql" \
-        | dc exec -T postgis psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"
+    python3 "$ROOT/scripts/rewrite_sql.py" "$DATA_DIR/vector/sql/${name}.sql" > "$rewritten"
+    dc exec -T postgis psql -v ON_ERROR_STOP=1 -q -U "$POSTGRES_USER" -d "$POSTGRES_DB" < "$rewritten"
+    rm -f "$rewritten"
 }
 
 load_gpkg() {
@@ -71,7 +74,7 @@ load_gpkg() {
         -lco GEOMETRY_NAME=geom \
         -lco FID=id \
         -lco SPATIAL_INDEX=GIST \
-        -lco LAUNDER=NO \
+        -lco LAUNDER=YES \
         -nlt "$geometry" \
         -t_srs EPSG:26917 \
         -overwrite
@@ -95,7 +98,7 @@ load_layer() {
 load_layer roads PROMOTE_TO_MULTI
 load_layer tracts PROMOTE_TO_MULTI
 load_layer parcels PROMOTE_TO_MULTI
-load_layer mirta_fl POINT
+load_layer mirta_fl PROMOTE_TO_MULTI
 
 if [ -f "$DATA_DIR/aoi_26917.geojson" ]; then
     if ! command -v ogr2ogr >/dev/null 2>&1; then
@@ -110,11 +113,14 @@ if [ -f "$DATA_DIR/aoi_26917.geojson" ]; then
             -lco GEOMETRY_NAME=geom \
             -lco FID=id \
             -lco SPATIAL_INDEX=GIST \
+            -lco LAUNDER=YES \
             -nlt PROMOTE_TO_MULTI \
             -a_srs EPSG:26917 \
             -overwrite
     fi
 fi
+
+sh "$ROOT/scripts/grant-app-role.sh"
 
 echo "[geoknight] rasters stay on disk for GeoServer:"
 echo "  imagery/naip_2025_jax_aoi_cog.tif"

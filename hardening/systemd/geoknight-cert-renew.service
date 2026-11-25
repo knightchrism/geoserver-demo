@@ -1,0 +1,9 @@
+[Unit]
+Description=Renew the GeoKnight GIS Let's Encrypt certificate and reload Nginx
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=__ROOT__
+ExecStart=/bin/sh __ROOT__/scripts/tls-renew.sh

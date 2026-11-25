@@ -23,6 +23,7 @@ if [ "$code" != "200" ]; then
 fi
 
 export GEOSERVER_INTERNAL_URL="$base"
+sh "$ROOT/scripts/grant-app-role.sh"
 python3 "$ROOT/scripts/configure_geoserver.py"
 
 # The resource API is convenient, and a direct copy makes the files certain.

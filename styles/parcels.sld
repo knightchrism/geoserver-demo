@@ -9,7 +9,7 @@
     <Name>parcels</Name>
     <UserStyle>
       <Title>Parcels</Title>
-      <Abstract>Parcel outlines. The identifying attribute is RE. Owner names are not in this layer.</Abstract>
+      <Abstract>Parcel outlines. The identifying attribute is re. Owner names are not in this layer.</Abstract>
       <FeatureTypeStyle>
         <Rule>
           <Name>parcel</Name>

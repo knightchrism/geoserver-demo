@@ -8,13 +8,13 @@ This folder is empty in git. The county extract, imagery, and elevation are larg
 data/
   aoi.geojson                         WGS84 outline of the area of interest
   aoi_26917.geojson                   same outline in EPSG:26917
-  vector/gpkg/parcels.gpkg            parcel key column: RE (owner names are not included)
+  vector/gpkg/parcels.gpkg            parcel key column: re (owner names are not included)
   vector/gpkg/roads.gpkg
-  vector/gpkg/mirta_fl.gpkg           site name column: SITENAME
+  vector/gpkg/mirta_fl.gpkg           polygons, site name column: sitename
   vector/gpkg/tracts.gpkg
-  vector/sql/parcels.sql              ogr2ogr PGDump, EPSG:26917, GiST index
+  vector/sql/parcels.sql              pg_dump style, schema jax_demo, EPSG:26917, GiST index
   vector/sql/roads.sql
-  vector/sql/mirta_fl.sql
+  vector/sql/mirta_fl.sql             polygons
   vector/sql/tracts.sql
   imagery/naip_2025_jax_aoi_cog.tif   2025 NAIP, 0.3 m RGB, JPEG COG
   elevation/dem_3dep_aoi_cog.tif      3DEP, 1 m float32, nodata -999999, about -3 m to 19 m

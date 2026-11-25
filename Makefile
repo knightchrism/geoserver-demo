@@ -1,18 +1,23 @@
-.PHONY: help env up down load-data fetch-data configure simulate verify bootstrap reset tls logs
+.PHONY: help env up down load-data fetch-data configure simulate verify bootstrap reset tls logs test test-loader backup
 
 help:
 	@echo "GeoKnight GIS"
 	@echo "  make env          Write .env with generated passwords (once)"
 	@echo "  make bootstrap    Start, load the sample, and publish the layers"
-	@echo "  make up           Start the stack"
+	@echo "  make up           Start the stack (keeps an existing Let's Encrypt certificate)"
 	@echo "  make down         Stop the stack, keep data"
-	@echo "  make load-data    Load GeoPackages and SQL into PostGIS"
+	@echo "  make load-data    Load SQL (jax_demo schema) or GeoPackages into PostGIS"
 	@echo "  make fetch-data   Download TIGER, 3DEP, and NAIP (or fall back)"
 	@echo "  make configure    Publish layers, styles, and accounts"
 	@echo "  make simulate     Run the visitor simulation (about 2 minutes)"
-	@echo "  make verify       Smoke test HTTPS, access rules, and the dashboard"
+	@echo "  make verify       Smoke test HTTPS, access rules, WFS-T, and the dashboard"
+	@echo "  make test         Run the loader and TLS client checks"
+	@echo "  make test-loader  Also load the tiny jax_demo fixture into PostGIS"
+	@echo "  make backup       Dump PostGIS and archive the GeoServer data directory"
 	@echo "  make logs         Follow GeoServer logs"
 	@echo "  make reset        Stop and delete volumes (destructive)"
+	@echo "  sh scripts/restore.sh --yes <dump> <tar>"
+	@echo "  sudo sh scripts/bootstrap-vm.sh"
 
 env:
 	sh scripts/env.sh
@@ -48,3 +53,13 @@ logs:
 
 reset:
 	docker compose --profile sim --profile test --profile letsencrypt --profile oidc down -v
+
+test:
+	python3 tests/test_rewrite_sql.py
+	sh tests/test_tls_client.sh
+
+test-loader: test
+	sh tests/test_load_fixture.sh
+
+backup:
+	sh scripts/backup.sh

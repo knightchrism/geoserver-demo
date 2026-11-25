@@ -6,30 +6,26 @@
   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
   xsi:schemaLocation="http://www.opengis.net/sld http://schemas.opengis.net/sld/1.0.0/StyledLayerDescriptor.xsd">
   <NamedLayer>
-    <Name>installations</Name>
+    <Name>mirta</Name>
     <UserStyle>
-      <Title>Gold installation marker</Title>
+      <Title>Installation polygons</Title>
+      <Abstract>Gold fill and navy outline for MIRTA installation polygons. The site name column is sitename.</Abstract>
       <FeatureTypeStyle>
         <Rule>
-          <Name>site</Name>
-          <PointSymbolizer>
-            <Graphic>
-              <Mark>
-                <WellKnownName>circle</WellKnownName>
-                <Fill>
-                  <CssParameter name="fill">#c9a227</CssParameter>
-                </Fill>
-                <Stroke>
-                  <CssParameter name="stroke">#0b1f3a</CssParameter>
-                  <CssParameter name="stroke-width">1.5</CssParameter>
-                </Stroke>
-              </Mark>
-              <Size>12</Size>
-            </Graphic>
-          </PointSymbolizer>
+          <Name>installation</Name>
+          <PolygonSymbolizer>
+            <Fill>
+              <CssParameter name="fill">#c9a227</CssParameter>
+              <CssParameter name="fill-opacity">0.35</CssParameter>
+            </Fill>
+            <Stroke>
+              <CssParameter name="stroke">#0b1f3a</CssParameter>
+              <CssParameter name="stroke-width">1.5</CssParameter>
+            </Stroke>
+          </PolygonSymbolizer>
           <TextSymbolizer>
             <Label>
-              <ogc:PropertyName>SITENAME</ogc:PropertyName>
+              <ogc:PropertyName>sitename</ogc:PropertyName>
             </Label>
             <Font>
               <CssParameter name="font-family">SansSerif</CssParameter>
@@ -40,7 +36,7 @@
               <PointPlacement>
                 <Displacement>
                   <DisplacementX>0</DisplacementX>
-                  <DisplacementY>10</DisplacementY>
+                  <DisplacementY>0</DisplacementY>
                 </Displacement>
               </PointPlacement>
             </LabelPlacement>

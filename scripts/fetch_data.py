@@ -2,15 +2,16 @@
 """Build the Jacksonville demonstration data, or download public sources.
 
 The repository does not contain the data. This script writes the data-folder
-layout under ./data: vector/gpkg, vector/sql PGDumps, imagery, elevation, AOI
-GeoJSON, and the elevation styles. --synthetic writes a small stand-in that
-covers the same Jacksonville extent as the full extract.
+layout under ./data: vector/gpkg, vector/sql dumps in the jax_demo schema,
+imagery, elevation, AOI GeoJSON, and the elevation styles. --synthetic writes
+a small stand-in that covers the same Jacksonville extent as the full extract.
+Column names are lowercase, matching the county package (re, sitename).
 
   python3 scripts/fetch_data.py --synthetic
   python3 scripts/fetch_data.py --download tiger,dem,naip
 
 --synthetic always works offline. It builds a downtown window in EPSG:26917
-with a road grid, parcel grid, sample installation points, a small elevation
+with a road grid, parcel grid, sample installation polygons, a small elevation
 model, a hillshade, and a stand-in aerial image.
 
 --download uses:
@@ -18,9 +19,9 @@ model, a hillshade, and a stand-in aerial image.
   * USGS 3DEP elevation via The National Map ImageServer
   * NAIP imagery via the Planetary Computer STAC API
 
-Parcels and installation points stay synthetic unless you already placed a
+Parcels and installation polygons stay synthetic unless you already placed a
 GeoPackage at the expected path. Those extracts are not a single small public
-file, and the installation points in this demo are not an authoritative MIRTA
+file, and the installation polygons in this demo are not an authoritative MIRTA
 copy.
 """
 
@@ -178,7 +179,7 @@ def write_roads(path: Path) -> None:
 
 def write_parcels(path: Path) -> None:
     datasource, layer = new_layer(path, "parcels", ogr.wkbMultiPolygon)
-    add_string_field(layer, "RE", 32)
+    add_string_field(layer, "re", 32)
     add_string_field(layer, "source", 40)
     acres = ogr.FieldDefn("acres", ogr.OFTReal)
     layer.CreateField(acres)
@@ -201,7 +202,7 @@ def write_parcels(path: Path) -> None:
             multi.AddGeometry(polygon)
             feature = ogr.Feature(layer.GetLayerDefn())
             feature.SetGeometry(multi)
-            feature.SetField("RE", f"RE-{row:04d}-{col:04d}")
+            feature.SetField("re", f"RE-{row:04d}-{col:04d}")
             feature.SetField("acres", round(((size - 12) ** 2) / 4046.86, 2))
             feature.SetField("source", "synthetic-sample")
             layer.CreateFeature(feature)
@@ -216,24 +217,35 @@ def write_parcels(path: Path) -> None:
 
 
 def write_installations(path: Path) -> None:
-    datasource, layer = new_layer(path, "mirta_fl", ogr.wkbPoint)
-    for name in ("SITENAME", "COMPONENT", "STATE", "source_note"):
+    datasource, layer = new_layer(path, "mirta_fl", ogr.wkbMultiPolygon)
+    for name in ("sitename", "component", "state", "source_note"):
         add_string_field(layer, name, 160)
-    # Spread sample points across the window. Names say they are samples.
+    # Small polygons spread across the window. Names say they are samples.
     sites = [
         (0.25, 0.30, "Sample Site North", "Sample component"),
         (0.62, 0.55, "Sample Site East", "Sample component"),
         (0.40, 0.72, "Sample Site River", "Sample component"),
         (0.78, 0.28, "Sample Site South", "Sample component"),
     ]
-    for index, (fx, fy, name, component) in enumerate(sites, start=1):
-        point = ogr.Geometry(ogr.wkbPoint)
-        point.AddPoint(MIN_X + (MAX_X - MIN_X) * fx, MIN_Y + (MAX_Y - MIN_Y) * fy)
+    size = 450.0
+    for fx, fy, name, component in sites:
+        x = MIN_X + (MAX_X - MIN_X) * fx
+        y = MIN_Y + (MAX_Y - MIN_Y) * fy
+        ring = ogr.Geometry(ogr.wkbLinearRing)
+        ring.AddPoint(x, y)
+        ring.AddPoint(x + size, y)
+        ring.AddPoint(x + size, y + size)
+        ring.AddPoint(x, y + size)
+        ring.AddPoint(x, y)
+        polygon = ogr.Geometry(ogr.wkbPolygon)
+        polygon.AddGeometry(ring)
+        multi = ogr.Geometry(ogr.wkbMultiPolygon)
+        multi.AddGeometry(polygon)
         feature = ogr.Feature(layer.GetLayerDefn())
-        feature.SetGeometry(point)
-        feature.SetField("SITENAME", name)
-        feature.SetField("COMPONENT", component)
-        feature.SetField("STATE", "FL")
+        feature.SetGeometry(multi)
+        feature.SetField("sitename", name)
+        feature.SetField("component", component)
+        feature.SetField("state", "FL")
         feature.SetField(
             "source_note",
             "SYNTHETIC sample for the GeoKnight demo. Not an authoritative MIRTA extract.",
@@ -242,7 +254,7 @@ def write_installations(path: Path) -> None:
         feature = None
     count = layer.GetFeatureCount()
     datasource = None
-    log(f"wrote {count} synthetic installation points to {path.name}")
+    log(f"wrote {count} synthetic installation polygons to {path.name}")
 
 
 def geotransform(width: int, height: int) -> tuple[float, float, float, float, float, float]:
@@ -587,7 +599,7 @@ def dump_sql(gpkg: Path, table: str, geometry: str) -> None:
             "-nln",
             table,
             "-lco",
-            "SCHEMA=public",
+            "SCHEMA=jax_demo",
             "-lco",
             "GEOMETRY_NAME=geom",
             "-lco",
@@ -595,14 +607,20 @@ def dump_sql(gpkg: Path, table: str, geometry: str) -> None:
             "-lco",
             "SPATIAL_INDEX=GIST",
             "-lco",
-            "LAUNDER=NO",
+            "LAUNDER=YES",
             "-nlt",
             geometry,
             "-a_srs",
             "EPSG:26917",
         ]
     )
-    log(f"wrote PGDump {dest.name}")
+    if str(ROOT / "scripts") not in sys.path:
+        sys.path.insert(0, str(ROOT / "scripts"))
+    from rewrite_sql import ensure_if_not_exists
+
+    text = dest.read_text(encoding="utf-8")
+    dest.write_text(ensure_if_not_exists(text), encoding="utf-8")
+    log(f"wrote SQL dump {dest.name} in schema jax_demo")
 
 
 def copy_styles() -> None:
@@ -631,12 +649,12 @@ def write_missing_vectors() -> None:
         dump_sql(parcels, "parcels", "PROMOTE_TO_MULTI")
     if not mirta.exists() and not (SQL / "mirta_fl.sql").exists():
         write_installations(mirta)
-        dump_sql(mirta, "mirta_fl", "POINT")
+        dump_sql(mirta, "mirta_fl", "PROMOTE_TO_MULTI")
     for gpkg, table, geometry in (
         (roads, "roads", "PROMOTE_TO_MULTI"),
         (tracts, "tracts", "PROMOTE_TO_MULTI"),
         (parcels, "parcels", "PROMOTE_TO_MULTI"),
-        (mirta, "mirta_fl", "POINT"),
+        (mirta, "mirta_fl", "PROMOTE_TO_MULTI"),
     ):
         if gpkg.exists() and not (SQL / f"{table}.sql").exists():
             dump_sql(gpkg, table, geometry)

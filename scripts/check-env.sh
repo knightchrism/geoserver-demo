@@ -35,6 +35,15 @@ check_password VIEWER_PASSWORD
 check_password ANALYST_PASSWORD
 check_password EDITOR_PASSWORD
 check_password GRAFANA_ADMIN_PASSWORD
+check_password GEOSERVER_DB_PASSWORD
+
+if [ -z "${GEOSERVER_DB_USER:-}" ]; then
+    echo "Missing GEOSERVER_DB_USER in .env" >&2
+    fail=1
+elif [ "$GEOSERVER_DB_USER" = "${POSTGRES_USER:-}" ] || [ "$GEOSERVER_DB_USER" = "postgres" ]; then
+    echo "GEOSERVER_DB_USER must be a separate role, not the database owner." >&2
+    fail=1
+fi
 
 if [ "${GEOSERVER_ADMIN_USER:-admin}" = "admin" ]; then
     echo "GEOSERVER_ADMIN_USER is still admin. Use a different username, for example gkadmin." >&2

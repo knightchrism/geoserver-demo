@@ -35,18 +35,18 @@ flowchart LR
 | --- | --- |
 | Nginx | The only public door. It redirects HTTP to HTTPS, adds security headers, and writes a JSON line for every request. The admin pages and the dashboard are limited to approved networks. |
 | GeoServer 3.0.2 | Serves WMS, WFS, WMTS, and WCS from the official `docker.osgeo.org/geoserver:3.0.2` image. |
-| PostGIS 16 / 3.5 | Holds roads, tracts, parcels, MIRTA points, the area-of-interest outline, and editor notes. |
+| PostGIS 16 / 3.5 | Holds roads, tracts, parcels, MIRTA polygons, the area-of-interest outline, and editor notes. GeoServer connects as a read-mostly role, with write limited to editor notes. |
 | Imagery and elevation | Cloud Optimized GeoTIFFs on disk. GeoServer reads them. They are not loaded into the database. |
 | Prometheus, node-exporter, cAdvisor | Host CPU, memory, disk, and container stats. |
 | Loki and Grafana Alloy | Alloy tails the Nginx JSON log and stores it in Loki. Promtail is not used. |
-| Grafana | The GeoKnight dashboard. Colors are navy `#0b1f3a` and gold `#c9a227`. |
+| Grafana | The GeoKnight dashboard. Colors are navy `#0b1f3a` and gold `#c9a227`. Alert rules for a 5xx rate, high latency, and a 401/403 spike are provisioned with it. |
 | Locust | Optional. It pretends to be a public visitor, an analyst, an editor, and an intruder. |
 
 ## Workspaces
 
 The **public** workspace holds roads, census tracts, the area-of-interest outline, NAIP imagery, the elevation grid, and the hillshade.
 
-The **restricted** workspace holds parcels, MIRTA installation points, and editor notes. A visitor who is not signed in with an analyst or editor account is challenged (HTTP 401). A signed-in viewer who lacks those roles is refused (HTTP 403).
+The **restricted** workspace holds parcels, MIRTA installation polygons, and editor notes. A visitor who is not signed in with an analyst or editor account is challenged (HTTP 401). A signed-in viewer who lacks those roles is refused (HTTP 403). Only an editor can change editor notes. An editor cannot change the other layers.
 
 ## Data folder
 
@@ -64,7 +64,7 @@ data/styles/dem_colorramp.sld
 data/styles/hillshade.sld
 ```
 
-The SQL files are ogr2ogr PGDump scripts in EPSG:26917 with GiST indexes. When a SQL file is present it is loaded. Otherwise the matching GeoPackage is loaded. The parcel key is `RE`. The MIRTA site name is `SITENAME`. Owner names are not in the parcel table.
+The SQL files are pg_dump-style scripts in EPSG:26917 with GiST indexes. They create tables in the `jax_demo` schema and already use `CREATE TABLE IF NOT EXISTS`. The loader rewrites that schema to `public` and can be run again without stacking another `IF NOT EXISTS`. When a SQL file is missing, the matching GeoPackage is loaded. The parcel key is `re`. The MIRTA site name is `sitename`. Owner names are not in the parcel table. MIRTA features are polygons, styled with a fill and an outline.
 
 The area of interest is EPSG:26917 X 429240–438990, Y 3341670–3358380, about longitude -81.736 to -81.634 and latitude 30.204 to 30.356.
 
@@ -80,8 +80,8 @@ The area of interest is EPSG:26917 X 429240–438990, Y 3341670–3358380, about
 
 | | Laptop | Ubuntu VM |
 | --- | --- | --- |
-| TLS | `make tls` builds a local certificate | `scripts/tls-certbot.sh` requests Let's Encrypt |
-| Firewall | Docker Desktop's own network | `scripts/harden-vm.sh` turns on ufw and fail2ban |
+| TLS | `TLS_MODE=local`. `make tls` builds a local certificate and leaves a Let's Encrypt file alone | `TLS_MODE=letsencrypt`. `scripts/tls-certbot.sh` requests the certificate. `scripts/tls-renew.sh` copies a renewal onto Nginx. `make up` does not overwrite it |
+| Firewall | Docker Desktop's own network | `scripts/bootstrap-vm.sh` installs make, jq, python3, openssl, and gdal-bin. `scripts/harden-vm.sh` turns on ufw and fail2ban |
 | Keycloak | Profile `oidc`, off unless you start it | Same |
 
 GeoServer is published only on `127.0.0.1:8080`. PostGIS is published only on `127.0.0.1:5432`. The public ports are 80 and 443.

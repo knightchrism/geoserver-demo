@@ -1,0 +1,15 @@
+# Nginx access and error logs for GeoKnight GIS.
+# scripts/bootstrap-vm.sh installs this to /etc/logrotate.d/geoknight-nginx
+# with the repository path filled in. copytruncate is used because the files
+# are bind-mounted into the container; rotating by rename would leave Nginx
+# writing to a deleted inode until it reopens the file.
+__ROOT__/logs/nginx/*.log {
+    daily
+    rotate 14
+    missingok
+    notifempty
+    compress
+    delaycompress
+    copytruncate
+    sharedscripts
+}

@@ -40,6 +40,9 @@ if [ -z "$yes_flag" ]; then
     exit 1
 fi
 
+root_dir="$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)"
+sh "$root_dir/scripts/bootstrap-vm.sh"
+
 export DEBIAN_FRONTEND=noninteractive
 apt-get update
 apt-get install -y ufw fail2ban
@@ -52,7 +55,6 @@ ufw allow 443/tcp
 ufw --force enable
 ufw status verbose
 
-root_dir="$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)"
 mkdir -p /etc/fail2ban/filter.d /etc/fail2ban/jail.d /var/log/geoknight
 cp "$root_dir/hardening/fail2ban/filter.d/geoknight-nginx.conf" /etc/fail2ban/filter.d/geoknight-nginx.conf
 cp "$root_dir/hardening/fail2ban/jail.d/geoknight.conf" /etc/fail2ban/jail.d/geoknight.conf

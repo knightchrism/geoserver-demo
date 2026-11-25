@@ -63,6 +63,9 @@ prometheus-data/
 loki-data/
 gwc-cache/
 
+# Database dumps and GeoServer data archives from scripts/backup.sh.
+backups/
+
 # Logs and test output.
 logs/
 *.log

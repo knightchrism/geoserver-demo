@@ -1,0 +1,6 @@
+# Example cron entry. Prefer the systemd timer on Ubuntu.
+# Install this file with: sudo sh scripts/bootstrap-vm.sh --with-cron
+# Do not enable both the timer and this cron job.
+SHELL=/bin/sh
+PATH=/usr/sbin:/usr/bin:/sbin:/bin
+17 3 * * * root __ROOT__/scripts/tls-renew.sh >> /var/log/geoknight-cert-renew.log 2>&1

@@ -55,7 +55,7 @@
       "table": "parcels",
       "name": "parcels",
       "title": "Duval County parcels",
-      "abstract": "Parcel polygons. The parcel key is RE. Owner names are not included.",
+      "abstract": "Parcel polygons. The parcel key column is re. Owner names are not included.",
       "style": "parcels",
       "geometry": "multipolygon",
       "tiled": true
@@ -67,9 +67,9 @@
       "table": "mirta_fl",
       "name": "mirta",
       "title": "MIRTA installations",
-      "abstract": "Florida installation points. The site name column is SITENAME. The sample points shipped for a machine without the real extract are labeled as samples.",
-      "style": "installations",
-      "geometry": "point",
+      "abstract": "Florida installation polygons. The site name column is sitename. Sample polygons built when the real extract is missing are labeled as samples.",
+      "style": "mirta",
+      "geometry": "multipolygon",
       "tiled": true
     },
     {

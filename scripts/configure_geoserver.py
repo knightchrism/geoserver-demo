@@ -116,8 +116,8 @@ def create_postgis_store(client: Client, workspace: str, schema: str, store: str
     <entry key="host">postgis</entry>
     <entry key="port">5432</entry>
     <entry key="database">{esc(env('POSTGRES_DB'))}</entry>
-    <entry key="user">{esc(env('POSTGRES_USER'))}</entry>
-    <entry key="passwd">{esc(env('POSTGRES_PASSWORD'))}</entry>
+    <entry key="user">{esc(env('GEOSERVER_DB_USER'))}</entry>
+    <entry key="passwd">{esc(env('GEOSERVER_DB_PASSWORD'))}</entry>
     <entry key="dbtype">postgis</entry>
     <entry key="schema">{esc(schema)}</entry>
     <entry key="Expose primary keys">true</entry>
@@ -446,12 +446,13 @@ def apply_security_files(client: Client) -> None:
         if status not in (200, 201):
             print(f"  resource API said: {body[:400]}")
     rules = {
+        "restricted.editor_notes.w": "ROLE_EDITOR,ADMIN",
         "*.*.r": "ADMIN",
         "*.*.w": "ADMIN",
         "public.*.r": "ROLE_ANONYMOUS,ROLE_PUBLIC,ROLE_ANALYST,ROLE_EDITOR,ADMIN",
-        "public.*.w": "ROLE_EDITOR,ADMIN",
+        "public.*.w": "ADMIN",
         "restricted.*.r": "ROLE_ANALYST,ROLE_EDITOR,ADMIN",
-        "restricted.*.w": "ROLE_EDITOR,ADMIN",
+        "restricted.*.w": "ADMIN",
     }
     status, body = client.call(
         "PUT",
@@ -461,7 +462,9 @@ def apply_security_files(client: Client) -> None:
     )
     print(f"  PUT layer rules -> {status}")
     if status not in (200, 201):
-        print(body[:600])
+        # GeoServer 3.0 can reject a new layer-specific rule on this call.
+        # The properties file written above is loaded by the reload below.
+        print("  layer rules will be read from layers.properties on reload")
     services = {
         "*.*": "*",
         "wfs.Transaction": "ROLE_EDITOR,ADMIN",

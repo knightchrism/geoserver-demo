@@ -2,7 +2,7 @@
 
 Personas
   public     anonymous viewer of roads, imagery, elevation, and repeated tiles
-  analyst    signed-in reader of parcels and installation points
+  analyst    signed-in reader of parcels and installation polygons
   editor     signed-in editor inserting and deleting a note with WFS-T
   intruder   anonymous or bad-password calls that should be refused
 
@@ -95,6 +95,22 @@ def _start_metrics(environment, **kwargs) -> None:
     threading.Thread(target=server.serve_forever, daemon=True).start()
 
 
+def _ca_verify():
+    """Trust VERIFY_CA, the system store on a public certificate, or the local CA."""
+    override = os.environ.get("LOCUST_CA_FILE", "").strip()
+    if override:
+        return override
+    if os.environ.get("TLS_MODE", "local").strip() == "letsencrypt":
+        system = "/etc/ssl/certs/ca-certificates.crt"
+        if os.path.isfile(system):
+            return system
+        return True
+    local = "/certs/ca.crt"
+    if os.path.isfile(local):
+        return local
+    return True
+
+
 def _bump(persona: str, delta: int) -> None:
     with METRICS_LOCK:
         METRICS[persona] = max(0, METRICS.get(persona, 0) + delta)
@@ -106,9 +122,7 @@ class BasePersona(HttpUser):
     persona = "public"
 
     def on_start(self) -> None:
-        verify = os.environ.get("REQUESTS_CA_BUNDLE")
-        if verify:
-            self.client.verify = verify
+        self.client.verify = _ca_verify()
         _bump(self.persona, 1)
 
     def on_stop(self) -> None:
